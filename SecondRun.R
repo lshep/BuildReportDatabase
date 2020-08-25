@@ -1,3 +1,39 @@
+######################################################################################
+#
+#On malbec2 in ~biocbuild/public_html/BBS/3.11/bioc:
+#
+#   - meat-index.dcf: same list of packages as in the manifest EXCEPT
+#that packages that have a DESCRIPTION file that is too broken for the
+#builds are separated and put in skipped-index.dcf
+#
+#   - skipped-index.dcf: list of packages from manifest that have a
+#DESCRIPTION file that is too broken for the builds.
+#
+#   - gitlog: folder containing 1 little dcf file per package in the
+#manifest e.g. gitlog/git-log-BiocGenerics.dcf:
+#
+#
+#    The OS, Platform, and R version used on each node can be extracted from
+#~biocbuild/public_html/BBS/3.11/bioc/nodes/<node_name>/NodeInfo/R-sessionInfo.txt
+
+cd /home/shepherd/Projects/BuildReportDatabase/TempCopyOfFiles
+
+scp biocbuild@malbec1.bioconductor.org:/home/biocbuild/public_html/BBS/3.12/bioc/*.dcf 3.12/bioc/
+scp -r biocbuild@malbec1.bioconductor.org:/home/biocbuild/public_html/BBS/3.12/bioc/gitlog 3.12/bioc/
+scp -r biocbuild@malbec1.bioconductor.org:/home/biocbuild/public_html/BBS/3.12/bioc/nodes/malbec1/NodeInfo 3.12/bioc/nodes/malbec1/
+scp -r biocbuild@malbec1.bioconductor.org:/home/biocbuild/public_html/BBS/3.12/bioc/nodes/tokay1/NodeInfo 3.12/bioc/nodes/tokay1/
+scp -r biocbuild@malbec1.bioconductor.org:/home/biocbuild/public_html/BBS/3.12/bioc/nodes/merida1/NodeInfo 3.12/bioc/nodes/merida1/
+scp -r biocbuild@malbec1.bioconductor.org:/home/biocbuild/public_html/BBS/3.12/bioc/nodes/nebbiolo1/NodeInfo 3.12/bioc/nodes/nebbiolo1/
+
+
+scp biocbuild@malbec2.bioconductor.org:/home/biocbuild/public_html/BBS/3.11/bioc/*.dcf 3.11/bioc/
+scp -r biocbuild@malbec2.bioconductor.org:/home/biocbuild/public_html/BBS/3.11/bioc/gitlog 3.11/bioc/
+scp -r biocbuild@malbec2.bioconductor.org:/home/biocbuild/public_html/BBS/3.11/bioc/nodes/malbec2/NodeInfo 3.11/bioc/nodes/malbec2/
+scp -r biocbuild@malbec2.bioconductor.org:/home/biocbuild/public_html/BBS/3.11/bioc/nodes/tokay2/NodeInfo 3.11/bioc/nodes/tokay2/
+scp -r biocbuild@malbec2.bioconductor.org:/home/biocbuild/public_html/BBS/3.11/bioc/nodes/machv2/NodeInfo 3.11/bioc/nodes/machv2/
+
+######################################################################################
+
 library(tidyr)
 library(dplyr)
 library(jsonlite)
