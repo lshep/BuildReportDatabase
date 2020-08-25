@@ -16,6 +16,8 @@
 #    The OS, Platform, and R version used on each node can be extracted from
 #~biocbuild/public_html/BBS/3.11/bioc/nodes/<node_name>/NodeInfo/R-sessionInfo.txt
 
+if(F){
+
 cd /home/shepherd/Projects/BuildReportDatabase/TempCopyOfFiles
 
 scp biocbuild@malbec1.bioconductor.org:/home/biocbuild/public_html/BBS/3.12/bioc/*.dcf 3.12/bioc/
@@ -32,6 +34,8 @@ scp -r biocbuild@malbec2.bioconductor.org:/home/biocbuild/public_html/BBS/3.11/b
 scp -r biocbuild@malbec2.bioconductor.org:/home/biocbuild/public_html/BBS/3.11/bioc/nodes/tokay2/NodeInfo 3.11/bioc/nodes/tokay2/
 scp -r biocbuild@malbec2.bioconductor.org:/home/biocbuild/public_html/BBS/3.11/bioc/nodes/machv2/NodeInfo 3.11/bioc/nodes/machv2/
 
+}
+    
 ######################################################################################
 
 library(tidyr)
@@ -50,10 +54,12 @@ config =  read_yaml("https://master.bioconductor.org/config.yaml")
 
 versions <- c(config$release_version, config$devel_version)
 
+# See the following for mariadb setup
+# https://github.com/r-dbi/RMariaDB
 con <- dbConnect(RMariaDB::MariaDB(), group = "my-db")
  
 
-#ver = versions[1]
+##  ver = versions[1]
 
 for(ver in versions){
     message("working on release: ", ver) 
@@ -78,7 +84,8 @@ for(ver in versions){
 
 ###############################################
          date_report <- cache_info(HEAD(file))[["modified"]]
-
+    date_report
+    
          # See if failed to build report based on date
          qry <- paste0("SELECT * FROM reports WHERE date='",date_report,"';")
          res <- dbSendQuery(con, qry)
@@ -108,7 +115,8 @@ for(ver in versions){
          
          names(tbl) = c("builder", "status")
          status <- tbl %>% separate(builder, c("package", "builder", "stage"), "#")
-
+         status$stage <- gsub(status$stage, pattern=":", replacement="")
+    
          # git problems as defined by skipped, ERROR, TIMEOUT
          idx <- which(tolower(status[,"status"]) %in% tolower(c("skipped","ERROR",
                                                                 "TIMEOUT")))
@@ -122,20 +130,22 @@ for(ver in versions){
          for(i in seq_len(dim(status)[1])){
 
              pkg <- status[i, "package"]
-             dcf <- read.dcf(paste0("/home/shepherd/Projects/BuildReportDatabase/TempCopyOfFiles/bioc/gitlog/git-log-", pkg,".dcf"))
+             dcf <-
+             read.dcf(paste0("/home/shepherd/Projects/BuildReportDatabase/TempCopyOfFiles/", ver, "/bioc/gitlog/git-log-", pkg,".dcf"))
              gitcommitid[i] <- dcf[,"Last Commit"]
              gitcommitdate[i] <- dcf[,"Last Changed Date"]
          }
 
-
-         pkgs <- unique(status[,"package"])
-         for(pkg in pkgs){
-             
-             dcf <- read.dcf(paste0("/home/shepherd/Projects/BuildReportDatabase/TempCopyOfFiles/bioc/gitlog/git-log-", pkg,".dcf"))
-             gitcommitid[which(status[,"package"]==pkg)] <- dcf[,"Last Commit"]
-             gitcommitdate[which(status[,"package"]==pkg)] <- dcf[,"Last Changed Date"]
-             
-         }
+## Is this faster?
+##         pkgs <- unique(status[,"package"])
+##         for(pkg in pkgs){
+##             
+##             dcf <-
+##             read.dcf(paste0("/home/shepherd/Projects/BuildReportDatabase/TempCopyOfFiles/", ver, "/bioc/gitlog/git-log-", pkg,".dcf"))
+##             gitcommitid[which(status[,"package"]==pkg)] <- dcf[,"Last Commit"]
+##             gitcommitdate[which(status[,"package"]==pkg)] <- dcf[,"Last Changed Date"]
+##             
+##         }
 
 
          status <- cbind(status, git_commit_id=gitcommitid, git_commit_date=gitcommitdate)
@@ -149,15 +159,15 @@ for(ver in versions){
 
 ###############################################
 
-         
-         ActiveBuilders <- system2("ls", args= "/home/shepherd/Projects/BuildReportDatabase/TempCopyOfFiles/bioc/nodes", stdout=TRUE)
+
+         ActiveBuilders <- system2("ls", args= paste0("/home/shepherd/Projects/BuildReportDatabase/TempCopyOfFiles/", ver, "/bioc/nodes"), stdout=TRUE)
          df <- matrix("", nrow=length(ActiveBuilders), ncol=4)
          rownames(df) <- ActiveBuilders
          colnames(df) <- c("r_version", "platform", "os", "bioc_version")
          
          for(i in ActiveBuilders){
              text <-
-                 readLines(paste0("/home/shepherd/Projects/BuildReportDatabase/TempCopyOfFiles/bioc/nodes/",i,"/NodeInfo/R-sessionInfo.txt"),
+                 readLines(paste0("/home/shepherd/Projects/BuildReportDatabase/TempCopyOfFiles/", ver, "/bioc/nodes/",i,"/NodeInfo/R-sessionInfo.txt"),
                            n=3)
              df[i,] <-  c(trimws(gsub(pattern="Platform:|Running under:", replacement="", text)), ver)
              
@@ -168,6 +178,7 @@ for(ver in versions){
          builders <- dbFetch(res)
          dbClearResult(res)
 
+    
 
          # verify there is an entry in the database and get builder_id for df 
          builder_id <- rep(NA_integer_, nrow(df))
@@ -178,9 +189,13 @@ for(ver in versions){
          # Update builders table if needed
          if (nrow(df) != nrow(found)){
              
-             not_fnd <- df[-(match(found["builder"], rownames(df))),]
-             not_fnd <- cbind(not_fnd, builder=rownames(not_fnd))
-             not_fnd <- as.data.frame(not_fnd) %>% select(colnames(builders)[-1])
+             if(nrow(found) == 0){
+                 not_fnd <- cbind(as.data.frame(df), builder=rownames(df))
+             }else{              
+                 not_fnd <- df[-(match(found$builder, rownames(df))),,drop=FALSE]
+                 not_fnd <- cbind(not_fnd, builder=rownames(not_fnd))
+                 not_fnd <- as.data.frame(not_fnd) %>% select(colnames(builders)[-1])
+             }
              dbAppendTable(con, "builders", not_fnd)    
              
              res <- dbSendQuery(con, "SELECT * FROM builders")
@@ -223,3 +238,7 @@ for(ver in versions){
     
 #Disconnect from the database
 dbDisconnect(con)
+
+
+
+## biocBuildReport package

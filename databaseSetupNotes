@@ -35,6 +35,19 @@ use buildreport;
 show tables;
 
 
+CREATE TABLE IF NOT EXISTS builders (
+  builder_id INT NOT NULL PRIMARY KEY AUTO_INCREMENT, 
+  builder VARCHAR(100) NOT NULL, 
+  os VARCHAR(100) NOT NULL,
+  platform VARCHAR(100) NOT NULL, 
+  r_version VARCHAR(100) NOT NULL, 
+  bioc_version VARCHAR(100) NOT NULL); 
+  
+CREATE TABLE IF NOT EXISTS reports (
+  report_id INT NOT NULL PRIMARY KEY AUTO_INCREMENT, 
+  date DATETIME NOT NULL,
+  repo_type VARCHAR(100));
+
 CREATE TABLE IF NOT EXISTS status (
   id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
   builder_id INT,
@@ -48,20 +61,28 @@ CREATE TABLE IF NOT EXISTS status (
   CONSTRAINT report_id_ck FOREIGN KEY (report_id) REFERENCES reports (report_id)
 );
 
-CREATE TABLE IF NOT EXISTS builders (
-  builder_id INT NOT NULL PRIMARY KEY AUTO_INCREMENT, 
-  builder VARCHAR(100) NOT NULL, 
-  os VARCHAR(100) NOT NULL,
-  platform VARCHAR(100) NOT NULL, 
-  r_version VARCHAR(100) NOT NULL, 
-  bioc_version VARCHAR(100) NOT NULL); 
-  
-CREATE TABLE IF NOT EXISTS reports (
-  report_id INT NOT NULL PRIMARY KEY AUTO_INCREMENT, 
-  date VARCHAR(100) NOT NULL,
-  repo_type VARCHAR(100));
+
+# Placeholders
+INSERT INTO builders (builder, os, platform, r_version, bioc_version) VALUES('NA', 'NA', 'NA', 'NA', 'NA');
+INSERT INTO reports (date, repo_type) VALUES('00-00-0000 00:00:0000', 'softare');
+INSERT INTO reports (date, repo_type) VALUES('00-00-0000 00:00:0000', 'workflow');
+INSERT INTO reports (date, repo_type) VALUES('00-00-0000 00:00:0000', 'data-experiment');
+INSERT INTO reports (date, repo_type) VALUES('00-00-0000 00:00:0000', 'data-annotation');
 
 
-#
-# INSERT INTO builders (builder, os, platform, r_version, bioc_version) VALUES('malbec2', 'Ubuntu 18.04.4 LTS', 'x86_64-pc-linux-gnu (64-bit)', 'R version 4.0.0 (2020-05-27)', '3.11');
-# INSERT INTO builders (builder, os, platform, r_version, bioc_version) VALUES('malbec2', 'Ubuntu 18.04.4 LTS', 'x86_64-pc-linux-gnu (64-bit)', 'R version 4.0.2 (2020-06-22)', '3.11');
+
+#########################
+
+# starting getting the following after reboot
+# ERROR 2002 (HY000): Can't connect to local MySQL server through socket '/var/run/mysqld/mysqld.sock' (2 "No such file or directory")
+
+# needed to restart mysql with:
+systemctl start mysql
+
+
+
+########################
+## to nuke database tables
+drop table status;
+drop table reports;
+drop table builders;
