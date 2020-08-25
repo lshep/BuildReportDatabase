@@ -1,0 +1,67 @@
+sudo apt update
+sudo apt install mariadb-server
+sudo mysql_secure_installation
+
+
+mysql -u root -p
+
+CREATE USER 'biocuser'@localhost IDENTIFIED BY 'buildreport';
+GRANT ALL PRIVILEGES ON *.* TO biocuser IDENTIFIED BY 'buildreport';
+
+create database buildreport;
+GRANT ALL privileges ON `buildreport`.* TO biocuser;
+FLUSH PRIVILEGES;
+
+#
+# https://mariadb.com/kb/en/a-mariadb-primer/
+
+
+# now
+sudo mysql -u root -p
+Ru*****
+mysql -u lshep -p
+Ru****
+mysql -u biocuser -p
+bui***
+
+
+use buildreport;
+
+
+show databases;
+use buildreport;
+
+
+show tables;
+
+
+CREATE TABLE IF NOT EXISTS status (
+  id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  builder_id INT,
+  report_id INT,
+  package VARCHAR(100) NOT NULL,
+  git_commit_id VARCHAR(100) NOT NULL,
+  git_commit_date VARCHAR(100) NOT NULL,
+  stage  VARCHAR(100) NOT NULL,
+  status VARCHAR(100) NOT NULL,
+  CONSTRAINT builder_id_ck FOREIGN KEY (builder_id) REFERENCES builders (builder_id),
+  CONSTRAINT report_id_ck FOREIGN KEY (report_id) REFERENCES reports (report_id)
+);
+
+CREATE TABLE IF NOT EXISTS builders (
+  builder_id INT NOT NULL PRIMARY KEY AUTO_INCREMENT, 
+  builder VARCHAR(100) NOT NULL, 
+  os VARCHAR(100) NOT NULL,
+  platform VARCHAR(100) NOT NULL, 
+  r_version VARCHAR(100) NOT NULL, 
+  bioc_version VARCHAR(100) NOT NULL); 
+  
+CREATE TABLE IF NOT EXISTS reports (
+  report_id INT NOT NULL PRIMARY KEY AUTO_INCREMENT, 
+  date VARCHAR(100) NOT NULL,
+  repo_type VARCHAR(100));
+
+
+#
+# INSERT INTO builders (builder, os, platform, r_version, bioc_version) VALUES('malbec2', 'Ubuntu 18.04.4 LTS', 'x86_64-pc-linux-gnu (64-bit)', 'R version 4.0.0 (2020-05-27)', '3.11');
+# INSERT INTO builders (builder, os, platform, r_version, bioc_version) VALUES('malbec2', 'Ubuntu 18.04.4 LTS', 'x86_64-pc-linux-gnu (64-bit)', 'R version 4.0.2 (2020-06-22)', '3.11');
