@@ -84,7 +84,6 @@ for(ver in versions){
 
 ###############################################
          date_report <- cache_info(HEAD(file))[["modified"]]
-    date_report
     
          # See if failed to build report based on date
          qry <- paste0("SELECT * FROM reports WHERE date='",date_report,"';")
@@ -116,12 +115,12 @@ for(ver in versions){
          names(tbl) = c("builder", "status")
          status <- tbl %>% separate(builder, c("package", "builder", "stage"), "#")
          status$stage <- gsub(status$stage, pattern=":", replacement="")
-    
+         status$status[which(is.na(status$status))] = "NA"
          # git problems as defined by skipped, ERROR, TIMEOUT
-         idx <- which(tolower(status[,"status"]) %in% tolower(c("skipped","ERROR",
-                                                                "TIMEOUT")))
+         #idx <- which(tolower(status[,"status"]) %in% tolower(c("skipped","ERROR",
+         #                                                       "TIMEOUT")))
 
-         status <- status[idx,]
+         #status <- status[idx,]
          
          gitcommitid <- rep("", dim(status)[1])
          gitcommitdate <- rep("", dim(status)[1])
@@ -206,6 +205,8 @@ for(ver in versions){
              found <- match_df(builders, as.data.frame(df))
              builder_id[match(unname(unlist(found["builder"])),  rownames(df))] = found$builder_id
              
+         } else {
+             message("All builders found")
          }
 
          df <- cbind(builder_id, df)
@@ -241,4 +242,153 @@ dbDisconnect(con)
 
 
 
+###############################################
+###############################################
+###############################################
+###############################################
+###############################################
+###############################################
+###############################################
+###############################################
+###############################################
+###############################################
+###############################################
+###############################################
+###############################################
+###############################################
+
+
 ## biocBuildReport package
+
+library(RMariaDB)
+library(dplyr)
+library(stringr)
+
+con <- dbConnect(RMariaDB::MariaDB(), group = "my-db")
+
+## bu = tbl(con, "builders")
+## rt = tbl(con, "reports")
+## st = tbl(con, "status")
+
+## Disconnect from the database
+## dbDisconnect(con)
+
+
+
+
+
+
+
+##########################################################
+##
+## Is my package failing on today's build report?
+##
+###########################################################
+
+today <- format(Sys.time(), "%Y-%m-%d")
+
+todays_report_id <- tbl(con, "reports") %>% filter(str_detect(date, today)) %>%
+    select("report_id") %>% collect(Inf) %>% `[[`("report_id")
+
+if(length(todays_report_id) == 0){
+    message("Build Report For Today is not posted yet")
+}
+
+
+if(F){
+    
+    yesterday <- format(Sys.time()-(24*60*60), "%Y-%m-%d")
+    todays_report_id <- tbl(con, "reports") %>% filter(str_detect(date, yesterday)) %>%
+        select("report_id") %>% collect(Inf) %>% `[[`("report_id")
+}
+
+
+
+#pkg = "BiocFileCache"
+pkg = "a4"
+
+any((tbl(con, "status") %>% filter(report_id %in% todays_report_id) %>%
+ filter(package == pkg) %>% collect %>% `[[`("status") %>% unique) %in%
+    c("ERROR", "TIMEOUT"))
+
+
+
+## In release or devel? 
+temp <- inner_join((tbl(con, "status") %>% filter(report_id %in% todays_report_id) %>%
+                    filter(package == pkg) %>% filter(status %in% c("ERROR", "TIMEOUT"))),
+                   tbl(con, "builders"))
+temp %>% collect %>% `[[`("bioc_version") %>% unique()
+
+
+## On what builders?
+temp %>% collect %>% `[[`("builder") %>% unique()
+
+
+
+
+##########################################################
+##
+## How long has my package been failing?
+##
+###########################################################
+
+pkg = "a4"
+
+temp = tbl(con, "status") %>% filter(package == pkg) %>% select("builder_id",
+                                                         "report_id", "status")
+
+temp2 = inner_join(inner_join((temp %>% filter(status %in%  c("ERROR", "TIMEOUT"))),
+                      tbl(con, "reports")), tbl(con, "builders")) %>%
+                      select("status", "date", "builder", "bioc_version")
+
+
+
+##########################################################
+##
+## What commit version is the builder using?
+##
+###########################################################
+
+
+today <- format(Sys.time(), "%Y-%m-%d")
+todays_report_id <- tbl(con, "reports") %>% filter(str_detect(date, today)) %>% select("report_id") %>% collect(Inf) %>% `[[`("report_id") 
+
+
+if(length(todays_report_id) == 0){
+    message("Build Report For Today is not posted yet")
+}
+
+
+if(F){
+    
+    yesterday <- format(Sys.time()-(24*60*60), "%Y-%m-%d")
+    todays_report_id <- tbl(con, "reports") %>% filter(str_detect(date, yesterday)) %>%
+        select("report_id") %>% collect(Inf) %>% `[[`("report_id")
+}
+
+
+
+#pkg = "AnnotationHub"
+pkg = "a4"
+
+## tbl(con, "status") %>% filter(report_id %in% todays_report_id) %>% filter(package == pkg) %>% select("git_commit_id", "git_commit_date") %>% distinct()
+## potentially different
+temp <- inner_join((tbl(con, "status") %>% filter(report_id %in% todays_report_id) %>%
+                    filter(package == pkg)),
+                   tbl(con, "builders"))
+temp %>% select("builder", "bioc_version", "git_commit_id", "git_commit_date") %>% distinct()
+
+
+
+
+
+if(F){
+    
+## think it would be useful to ask historical questions, like 'how many successes has my package had, across all platforms, in the last x days'. Also it might be useful to ask more complicated questions, like 'for each day, did my package build successfully? did any of it's dependencies fail to build? where there changes (git commit ids?) in any of my dependencies' and also 'when I changed my package, did any of my reverse dependencies break?' Most of these I'm thinking return a tibble with columns for date, my package status, dependency/reverse dependency status, etc
+    
+}
+
+
+## Disconnect from database
+dbDisconnect(con)
+
