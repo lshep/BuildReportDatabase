@@ -50,8 +50,8 @@ CREATE TABLE IF NOT EXISTS reports (
 
 CREATE TABLE IF NOT EXISTS status (
   id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-  builder_id INT,
   report_id INT,
+  builder_id INT,
   package VARCHAR(100) NOT NULL,
   git_commit_id VARCHAR(100) NOT NULL,
   git_commit_date VARCHAR(100) NOT NULL,
@@ -60,6 +60,14 @@ CREATE TABLE IF NOT EXISTS status (
   CONSTRAINT builder_id_ck FOREIGN KEY (builder_id) REFERENCES builders (builder_id),
   CONSTRAINT report_id_ck FOREIGN KEY (report_id) REFERENCES reports (report_id)
 );
+
+CREATE VIEW overview AS (
+SELECT id, status.report_id, status.builder_id, builder, package, stage, status, date 
+FROM status
+INNER JOIN reports ON status.report_id = reports.report_id
+INNER JOIN builders ON status.builder_id = builders.builder_id
+);
+
 
 
 # Placeholders
@@ -83,6 +91,7 @@ systemctl start mysql
 
 ########################
 ## to nuke database tables
+drop view overview;
 drop table status;
 drop table reports;
 drop table builders;
